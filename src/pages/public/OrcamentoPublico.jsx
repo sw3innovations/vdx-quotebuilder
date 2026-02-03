@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { entities } from "@/api/api";
+import { entities, calcularPecasBackend } from "@/api/api";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -167,15 +167,21 @@ export default function OrcamentoPublico() {
     }
   });
 
-  const selecionarTipologia = (tipologia) => {
-    setTipologiaSelecionada(tipologia);
-    const vars = tipologia.variaveis?.map(v => ({
-      ...v,
-      valor: '',
-      unidade: v.unidade_padrao || 'cm'
-    })) || [];
-    setVariaveisPreenchidas(vars);
-    setAcessoriosSelecionados([]);
+  const selecionarTipologia = async (tipologia) => {
+    try {
+      const tipologiaCompleta = await entities.Tipologia.getCompleta(tipologia.id);
+      setTipologiaSelecionada(tipologiaCompleta);
+      const vars = tipologiaCompleta.variaveis?.map(v => ({
+        ...v,
+        valor: '',
+        unidade: v.unidade_padrao || 'cm'
+      })) || [];
+      setVariaveisPreenchidas(vars);
+      setAcessoriosSelecionados([]);
+    } catch (error) {
+      console.error('Erro ao buscar tipologia completa:', error);
+      setTipologiaSelecionada(tipologia);
+    }
   };
 
   // Acessórios disponíveis para a tipologia (usando produtos comerciais)
@@ -222,17 +228,39 @@ export default function OrcamentoPublico() {
     }
   };
 
-  const executarCalculo = () => {
+  // ============================================
+  // FUNÇÃO CORRIGIDA - executarCalculo
+  // Substituir a função executarCalculo inteira no OrcamentoPublico.jsx
+  // ============================================
+
+  const executarCalculo = async () => {
     if (!tipologiaSelecionada) return;
     
-    const resultado = calcularPecas(tipologiaSelecionada, variaveisPreenchidas);
-    setPecasCalculadas(resultado.pecas);
-    setTotais({
-      areaTotalRealM2: resultado.areaTotalRealM2,
-      areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
-    });
-    setPecaConferenciaAtual(0);
-    setEtapaAtual(3);
+    try {
+      const resultado = await calcularPecasBackend(
+        tipologiaSelecionada.id,
+        variaveisPreenchidas,
+        variaveisPreenchidas[0]?.unidade || 'cm'
+      );
+      
+      setPecasCalculadas(resultado.pecas);
+      setTotais({
+        areaTotalRealM2: resultado.areaTotalRealM2,
+        areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
+      });
+      setPecaConferenciaAtual(0);
+      setEtapaAtual(3);
+    } catch (error) {
+      console.error('Erro ao calcular peças:', error);
+      const resultado = calcularPecas(tipologiaSelecionada, variaveisPreenchidas);
+      setPecasCalculadas(resultado.pecas);
+      setTotais({
+        areaTotalRealM2: resultado.areaTotalRealM2,
+        areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
+      });
+      setPecaConferenciaAtual(0);
+      setEtapaAtual(3);
+    }
   };
 
   const confirmarPeca = (index) => {
