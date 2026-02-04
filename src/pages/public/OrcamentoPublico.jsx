@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { entities, calcularPecasBackend } from "@/api/api";
+import { entities, calcularPecasBackend, recomendarVidroABNT } from "@/api/api";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -29,6 +29,7 @@ import CategoriaCard from "@/components/orcamento/CategoriaCard";
 import TipologiaCard from "@/components/orcamento/TipologiaCard";
 import InputComUnidade from "@/components/orcamento/InputComUnidade";
 import PecaConferencia from "@/components/orcamento/PecaConferencia";
+import RecomendacaoABNT from "@/components/orcamento/RecomendacaoABNT";
 import { calcularPecas, calcularPreco } from "@/components/utils/calculoUtils";
 
 const ETAPAS = [
@@ -63,6 +64,7 @@ export default function OrcamentoPublico() {
   const [carrinho, setCarrinho] = useState([]);
   const [mostrarCarrinho, setMostrarCarrinho] = useState(false);
   const [acessoriosSelecionados, setAcessoriosSelecionados] = useState([]);
+  const [recomendacaoABNT, setRecomendacaoABNT] = useState(null);
 
   // Queries
   const { data: categorias = [] } = useQuery({
@@ -249,6 +251,22 @@ export default function OrcamentoPublico() {
         areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
       });
       setPecaConferenciaAtual(0);
+
+      // Recomendacao ABNT automatica
+      if (categoriaSelecionada?.nome) {
+        const maiorPeca = resultado.pecas.reduce((max, p) => {
+          const area = (p.largura_real_mm || 0) * (p.altura_real_mm || 0);
+          const maxArea = (max.largura_real_mm || 0) * (max.altura_real_mm || 0);
+          return area > maxArea ? p : max;
+        }, resultado.pecas[0]);
+        const rec = await recomendarVidroABNT(
+          categoriaSelecionada.nome,
+          maiorPeca.largura_real_mm,
+          maiorPeca.altura_real_mm
+        );
+        setRecomendacaoABNT(rec);
+      }
+
       setEtapaAtual(3);
     } catch (error) {
       console.error('Erro ao calcular peças:', error);
@@ -879,6 +897,7 @@ export default function OrcamentoPublico() {
               </div>
               
               <div className="max-w-2xl mx-auto">
+                <RecomendacaoABNT recomendacao={recomendacaoABNT} />
                 {pecasCalculadas.length > 0 && (
                   <PecaConferencia
                     peca={pecasCalculadas[pecaConferenciaAtual]}

@@ -332,3 +332,36 @@ export const integrations = {
     },
   },
 };
+// ==================== RECOMENDAÇÃO VIDRO ABNT ====================
+
+// Mapa de nomes de categoria do frontend para enum do backend
+const CATEGORIA_MAP = {
+  'Portas': 'PORTA',
+  'Janelas': 'JANELA',
+  'Box': 'BOX',
+  'Guarda Corpo': 'GUARDA_CORPO',
+  'Coberturas': 'COBERTURA',
+  'Divisórias': 'DIVISORIA',
+  'Vitrines': 'VITRINE',
+  'Fachadas': 'FACHADA',
+};
+
+export async function recomendarVidroABNT(categoriaNome, larguraMm, alturaMm) {
+  const categoriaEnum = CATEGORIA_MAP[categoriaNome];
+  if (!categoriaEnum) {
+    console.warn('[ABNT] Categoria sem mapeamento:', categoriaNome);
+    return null;
+  }
+  
+  try {
+    const resultado = await vidroApi.recomendar({
+      categoria: categoriaEnum,
+      largura_mm: Math.round(larguraMm),
+      altura_mm: Math.round(alturaMm),
+    });
+    return resultado;
+  } catch (error) {
+    console.error('[ABNT] Erro na recomendação:', error);
+    return null;
+  }
+}
