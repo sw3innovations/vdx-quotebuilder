@@ -1,15 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { entities } from '@/api/api';
-import { 
-  Plus, 
-  FileText, 
-  Clock, 
+import { useAuth } from '@/lib/AuthContext';
+import { appParams } from '@/lib/app-params';
+import IdentificacaoModal from '@/components/auth/IdentificacaoModal';
+import {
+  Plus,
+  FileText,
+  Clock,
   Bell,
   MessageCircle,
   ChevronRight,
-  LogOut
+  LogOut,
 } from 'lucide-react';
 
 // Mock data para Company
@@ -32,10 +35,7 @@ const mockQuoteTypes = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const [customer] = useState(() => {
-    const saved = localStorage.getItem('customer');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const { user, isAuthenticated, isLoadingAuth, logout } = useAuth();
 
   // Buscar orçamentos
   const { data: allOrcamentos = [] } = useQuery({
@@ -84,10 +84,15 @@ export default function Home() {
     return 'Boa noite';
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('customer');
-    navigate('/');
-  };
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const handleLogout = () => logout();
 
   const primaryColor = company?.primary_color || localStorage.getItem('company_primary_color') || '#1e88e5';
 
@@ -137,7 +142,7 @@ export default function Home() {
         <div className="mb-5">
           <p className="text-slate-500 text-sm mb-0.5">{getGreeting()}</p>
           <h2 className="text-xl font-bold text-slate-900">
-            {customer?.name?.split(' ')[0] || 'Bem-vindo'} 👋
+            {user?.nome?.split(' ')[0] || 'Bem-vindo'}
           </h2>
         </div>
 
@@ -208,7 +213,7 @@ export default function Home() {
         </div>
 
         {/* Help Card */}
-        <button 
+        <button
           className="w-full p-4 rounded-xl bg-amber-50 border border-amber-100 text-left transition-all hover:bg-amber-100/50 active:scale-[0.98]"
         >
           <div className="flex items-center gap-3">
@@ -223,6 +228,12 @@ export default function Home() {
           </div>
         </button>
       </div>
+
+      <IdentificacaoModal
+        open={!isAuthenticated}
+        phone={appParams.phone}
+        name={appParams.name}
+      />
     </div>
   );
 }
