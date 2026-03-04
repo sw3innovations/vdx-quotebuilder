@@ -117,6 +117,7 @@ export const vidroApi = {
 export const adminApi = {
   listarOrcamentos: () => request('/api/orcamentos'),
   buscarOrcamento:  (id) => request(`/api/orcamentos/${id}`),
+  buscarStats:      () => request('/api/admin/orcamentos/stats'),
 };
 
 // ==================== VIDRACEIRO ====================
