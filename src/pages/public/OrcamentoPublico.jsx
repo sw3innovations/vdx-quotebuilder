@@ -204,10 +204,9 @@ export default function OrcamentoPublico() {
   });
 
   const selecionarCor = async (cor) => {
-    setTipoVidroSelecionado(cor);
+    setTipoVidroSelecionado(cor);  // seleção visual imediata
     setAlertasVidro([]);
-    console.log('selecionarCor chamado:', cor, 'categoria:', categoriaSelecionada?.nome, 'map:', CATEGORIA_MAP[categoriaSelecionada?.nome]);
-    if (!categoriaSelecionada) return;
+    if (!categoriaSelecionada || !previewAreaM2 || previewAreaM2 <= 0) return;
     setValidandoCor(true);
     try {
       const resultado = await vidroApi.validar({
