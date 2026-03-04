@@ -347,8 +347,8 @@ export async function recomendarVidroABNT(categoriaNome, larguraMm, alturaMm) {
   try {
     const resultado = await vidroApi.recomendar({
       categoria: categoriaEnum,
-      largura_mm: Math.round(larguraMm),
-      altura_mm: Math.round(alturaMm),
+      larguraMm: Math.round(larguraMm),
+      alturaMm: Math.round(alturaMm),
     });
     return resultado;
   } catch (error) {

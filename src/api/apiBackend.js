@@ -87,7 +87,7 @@ export const orcamentoApi = {
   calcularPecas: (tipologiaId, variaveis, unidade = 'cm') => request('/api/orcamento-dinamico/calcular-pecas', {
     method: 'POST',
     body: JSON.stringify({
-      tipologia_id: tipologiaId,
+      tipologiaId: tipologiaId,
       variaveis,
       unidade,
     }),
