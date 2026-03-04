@@ -866,11 +866,9 @@ export default function OrcamentoPublico() {
                               key={tipo.cor_id}
                               onClick={() => !validandoCor && selecionarCor(tipo)}
                               className={`p-4 rounded-xl border-2 transition-all ${
-                                validandoCor ? 'cursor-wait opacity-60' : 'cursor-pointer'
-                              } ${
                                 tipoVidroSelecionado?.cor_id === tipo.cor_id
-                                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                  ? 'border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1 cursor-pointer'
+                                  : `border-slate-200 ${validandoCor ? 'opacity-60 cursor-wait' : 'hover:border-slate-300 hover:bg-slate-50 cursor-pointer'}`
                               }`}
                             >
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
