@@ -353,7 +353,7 @@ export default function OrcamentoPublico() {
       id: Date.now(),
       tipologia_id: tipologiaSelecionada.id,
       tipologia_nome: tipologiaSelecionada.nome,
-      tipo_vidro_id: tipoVidroSelecionado.id,
+      tipo_vidro_id: tipoVidroSelecionado.cor_id,
       tipo_vidro_nome: tipoVidroSelecionado.nome,
       tipo_vidro_cor: tipoVidroSelecionado.cor_hex || tipoVidroSelecionado.cor,
       variaveis_entrada: variaveisPreenchidas.map(v => ({
@@ -398,7 +398,7 @@ export default function OrcamentoPublico() {
     // Verificar se o item já está no carrinho (evitar duplicatas)
     const itemJaExiste = carrinho.some(item => 
       item.tipologia_id === tipologiaSelecionada.id &&
-      item.tipo_vidro_id === tipoVidroSelecionado.id &&
+      item.tipo_vidro_id === tipoVidroSelecionado.cor_id &&
       JSON.stringify(item.variaveis_entrada) === JSON.stringify(variaveisPreenchidas.map(v => ({
         nome: v.nome,
         label: v.label,
@@ -419,7 +419,7 @@ export default function OrcamentoPublico() {
       id: Date.now(),
       tipologia_id: tipologiaSelecionada.id,
       tipologia_nome: tipologiaSelecionada.nome,
-      tipo_vidro_id: tipoVidroSelecionado.id,
+      tipo_vidro_id: tipoVidroSelecionado.cor_id,
       tipo_vidro_nome: tipoVidroSelecionado.nome,
       tipo_vidro_cor: tipoVidroSelecionado.cor_hex || tipoVidroSelecionado.cor,
       variaveis_entrada: variaveisPreenchidas.map(v => ({
@@ -863,12 +863,12 @@ export default function OrcamentoPublico() {
                         <CardContent className="space-y-3">
                           {coresComPreco.map((tipo) => (
                             <div
-                              key={tipo.id}
+                              key={tipo.cor_id}
                               onClick={() => !validandoCor && selecionarCor(tipo)}
                               className={`p-4 rounded-xl border-2 transition-all ${
                                 validandoCor ? 'cursor-wait opacity-60' : 'cursor-pointer'
                               } ${
-                                tipoVidroSelecionado?.id === tipo.id
+                                tipoVidroSelecionado?.cor_id === tipo.cor_id
                                   ? 'border-blue-500 bg-blue-50 shadow-md'
                                   : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                               }`}
@@ -888,7 +888,7 @@ export default function OrcamentoPublico() {
                                   <p className="text-base sm:text-lg font-bold text-slate-900">
                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tipo.preco_final || 0)}
                                   </p>
-                                  {tipoVidroSelecionado?.id === tipo.id && (
+                                  {tipoVidroSelecionado?.cor_id === tipo.cor_id && (
                                     <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 sm:hidden">
                                       <Check className="w-3 h-3 text-white" />
                                     </div>
