@@ -1,3 +1,5 @@
+import { evaluate } from 'mathjs';
+
 // Fatores de conversão para milímetros
 const FATORES = {
   mm: 1,
@@ -47,14 +49,9 @@ export function avaliarFormula(formula, variaveis) {
   // Remove espaços e avalia a expressão
   expressao = expressao.replace(/\s/g, '');
   
-  // Avaliação segura da expressão matemática
+  // Avaliação segura da expressão matemática via mathjs (sem eval)
   try {
-    // Permite apenas números, operadores básicos e parênteses
-    if (!/^[\d+\-*/().]+$/.test(expressao)) {
-      console.error('Expressão inválida:', expressao);
-      return 0;
-    }
-    return Function('"use strict"; return (' + expressao + ')')();
+    return evaluate(expressao);
   } catch (e) {
     console.error('Erro ao avaliar fórmula:', formula, expressao, e);
     return 0;
