@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { entities } from '@/api/api';
+import { vidaceiroApi } from '@/api/apiBackend';
 import { ArrowLeft, Bell, FileText, Clock } from 'lucide-react';
 import QuoteCard from '@/components/quotes/QuoteCard';
 
-// Mock data para Company
 const mockCompany = {
   id: 'comp-1',
   name: 'Vidraçaria Digital Express',
@@ -13,34 +12,30 @@ const mockCompany = {
   primary_color: '#1e88e5'
 };
 
+const BACKEND_TO_CARD_STATUS = {
+  aguardando_retirada: 'approved',
+  cancelado: 'rejected',
+};
+
 export default function QuoteHistory() {
   const navigate = useNavigate();
-  const [customer] = useState(() => {
-    const saved = localStorage.getItem('customer');
-    return saved ? JSON.parse(saved) : null;
-  });
 
-  // Buscar orçamentos
   const { data: allOrcamentos = [] } = useQuery({
-    queryKey: ['orcamentos'],
-    queryFn: () => entities.Orcamento.list()
+    queryKey: ['vidraceiro-orcamentos'],
+    queryFn: () => vidaceiroApi.listarOrcamentos(),
   });
 
-  // Usar dados mockados
   const company = mockCompany;
-  
-  // Filtrar orçamentos do cliente e converter para formato de Quote
-  // Por enquanto, mostrar todos os orçamentos finalizados como exemplo
+
   const completedQuotes = allOrcamentos
-    .filter(q => ['concluido', 'cancelado'].includes(q.status))
+    .filter(q => ['aguardando_retirada', 'cancelado'].includes(q.status))
     .map(orc => ({
       id: orc.id,
       quote_number: orc.numero,
       quote_type_name: orc.tipologia_nome,
-      status: orc.status === 'concluido' ? 'approved' : 'rejected',
+      status: BACKEND_TO_CARD_STATUS[orc.status] || 'expired',
       total_value: orc.preco_total,
       created_date: orc.created_date,
-      customer_id: orc.cliente_email // Usar email como identificador temporário
     }));
 
   React.useEffect(() => {
@@ -53,8 +48,7 @@ export default function QuoteHistory() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 to-white">
-      {/* Header */}
-      <header 
+      <header
         className="px-5 py-3.5 flex items-center justify-between"
         style={{ backgroundColor: primaryColor }}
       >
@@ -77,9 +71,7 @@ export default function QuoteHistory() {
         </button>
       </header>
 
-      {/* Main Content */}
       <div className="px-4 py-5 max-w-2xl mx-auto">
-        {/* Back Button */}
         <button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 mb-5 text-sm font-medium hover:opacity-70 transition-opacity"
@@ -89,10 +81,9 @@ export default function QuoteHistory() {
           <span>Voltar</span>
         </button>
 
-        {/* Title Card */}
         <div className="mb-5 p-4 rounded-2xl bg-white shadow-sm">
           <div className="flex items-center gap-3">
-            <div 
+            <div
               className="w-12 h-12 rounded-xl flex items-center justify-center"
               style={{ backgroundColor: `${primaryColor}15` }}
             >
@@ -101,7 +92,7 @@ export default function QuoteHistory() {
             <div>
               <h2 className="text-lg font-bold text-slate-900">Histórico</h2>
               <p className="text-sm text-slate-500">
-                {completedQuotes.length === 0 
+                {completedQuotes.length === 0
                   ? 'Nenhum orçamento finalizado'
                   : `${completedQuotes.length} orçamento${completedQuotes.length > 1 ? 's' : ''} finalizado${completedQuotes.length > 1 ? 's' : ''}`
                 }
@@ -110,7 +101,6 @@ export default function QuoteHistory() {
           </div>
         </div>
 
-        {/* Quotes List */}
         <div className="space-y-3">
           {completedQuotes.length === 0 ? (
             <div className="p-8 text-center bg-white rounded-2xl shadow-sm">

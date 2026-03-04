@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { entities } from '@/api/api';
-import { ArrowLeft, Bell, History, FileText } from 'lucide-react';
+import { vidaceiroApi } from '@/api/apiBackend';
+import { ArrowLeft, Bell, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Mock data para Company
 const mockCompany = {
   id: 'comp-1',
   name: 'Vidraçaria Digital Express',
@@ -17,49 +16,36 @@ const mockCompany = {
 };
 
 const STATUS_CONFIG = {
-  approved: { 
-    label: 'Aprovado', 
-    color: 'bg-green-100 text-green-700'
-  },
-  rejected: { 
-    label: 'Rejeitado', 
-    color: 'bg-red-100 text-red-700'
-  },
-  expired: { 
-    label: 'Expirado', 
-    color: 'bg-slate-100 text-slate-700'
-  },
-  pending: {
-    label: 'Pendente',
-    color: 'bg-amber-100 text-amber-700'
-  },
-  sent: {
-    label: 'Enviado',
-    color: 'bg-blue-100 text-blue-700'
-  }
+  rascunho:             { label: 'Rascunho',             color: 'bg-slate-100 text-slate-700' },
+  aguardando_aprovacao: { label: 'Aguardando Aprovação', color: 'bg-slate-100 text-slate-700' },
+  aguardando_pagamento: { label: 'Aguardando Pagamento', color: 'bg-amber-100 text-amber-700' },
+  em_producao:          { label: 'Em Produção',          color: 'bg-blue-100 text-blue-700' },
+  aguardando_retirada:  { label: 'Pronto',               color: 'bg-green-100 text-green-700' },
+  cancelado:            { label: 'Cancelado',            color: 'bg-red-100 text-red-700' },
 };
 
 export default function QuoteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [customer] = useState(() => {
-    const saved = localStorage.getItem('customer');
-    return saved ? JSON.parse(saved) : null;
-  });
 
-  // Buscar orçamento - por enquanto usando mock, depois usar entities.Quote
-  const { data: orcamentos = [] } = useQuery({
-    queryKey: ['orcamentos'],
-    queryFn: () => entities.Orcamento.list()
+  const { data: quote, isLoading, isError } = useQuery({
+    queryKey: ['orcamento', id],
+    queryFn: () => vidaceiroApi.buscarOrcamento(id),
   });
-
-  const quote = orcamentos.find(o => o.id === id);
 
   const company = mockCompany;
   const primaryColor = company?.primary_color || localStorage.getItem('company_primary_color') || '#1e88e5';
-  const statusConfig = STATUS_CONFIG[quote?.status] || STATUS_CONFIG.pending;
+  const statusConfig = STATUS_CONFIG[quote?.status] || STATUS_CONFIG.rascunho;
 
-  if (!quote) {
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-white">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError || !quote) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <Card className="p-8 text-center max-w-md">
@@ -80,8 +66,7 @@ export default function QuoteDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 to-white">
-      {/* Header */}
-      <header 
+      <header
         className="px-5 py-3.5 flex items-center justify-between"
         style={{ backgroundColor: primaryColor }}
       >
@@ -104,9 +89,7 @@ export default function QuoteDetail() {
         </button>
       </header>
 
-      {/* Main Content */}
       <div className="px-4 py-5 max-w-2xl mx-auto">
-        {/* Back Button */}
         <button
           onClick={() => navigate('/historico')}
           className="flex items-center gap-2 mb-5 text-sm font-medium hover:opacity-70 transition-opacity"
@@ -116,7 +99,6 @@ export default function QuoteDetail() {
           <span>Voltar</span>
         </button>
 
-        {/* Quote Info Card */}
         <Card className="mb-5">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -136,7 +118,7 @@ export default function QuoteDetail() {
                   <p className="font-medium text-slate-900">{quote.tipologia_nome}</p>
                 </div>
               )}
-              
+
               {quote.tipo_vidro_nome && (
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Tipo de Vidro</p>
@@ -148,10 +130,7 @@ export default function QuoteDetail() {
                 <div className="pt-4 border-t">
                   <p className="text-sm text-slate-500 mb-1">Valor Total</p>
                   <p className="text-2xl font-bold" style={{ color: primaryColor }}>
-                    R$ {quote.preco_total.toLocaleString('pt-BR', { 
-                      minimumFractionDigits: 2, 
-                      maximumFractionDigits: 2 
-                    })}
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(quote.preco_total)}
                   </p>
                 </div>
               )}
@@ -167,43 +146,6 @@ export default function QuoteDetail() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Histórico */}
-        {quote.history && quote.history.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-slate-500" />
-                <CardTitle>Histórico</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 border-l-2 border-slate-200 pl-4">
-                {quote.history
-                  .sort((a, b) => new Date(b.date) - new Date(a.date))
-                  .map((entry, index) => (
-                    <div key={index} className="relative">
-                      <div className="absolute -left-6 top-2 w-3 h-3 rounded-full bg-blue-500 border-2 border-white"></div>
-                      <div className="bg-slate-50 rounded-lg p-3">
-                        <p className="text-sm font-medium text-slate-900 mb-1">{entry.action}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-slate-500">
-                            {format(new Date(entry.date), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                          </p>
-                          {entry.user && (
-                            <>
-                              <span className="text-xs text-slate-300">•</span>
-                              <p className="text-xs text-slate-500">por {entry.user}</p>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );
