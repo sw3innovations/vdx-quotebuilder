@@ -114,10 +114,26 @@ export default function OrcamentoPublico() {
     queryFn: () => entities.Acessorio.filter({ ativo: true }, 'ordem')
   });
 
+  const previewAreaM2 = useMemo(() => {
+    const toMm = (v, u) => {
+      const n = parseFloat(v) || 0;
+      if (!n) return 0;
+      if (u === 'mm') return n;
+      if (u === 'm') return n * 1000;
+      return n * 10; // cm default
+    };
+    const v0 = variaveisPreenchidas[0];
+    const v1 = variaveisPreenchidas[1];
+    if (!v0?.valor || !v1?.valor) return 0;
+    const mm0 = toMm(v0.valor, v0.unidade);
+    const mm1 = toMm(v1.valor, v1.unidade);
+    return (mm0 * mm1) / 1_000_000;
+  }, [variaveisPreenchidas]);
+
   const { data: coresComPreco = [] } = useQuery({
-    queryKey: ['cores-com-preco', tipologiaSelecionada?.id, totais.areaTotalRealM2],
-    queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id, totais.areaTotalRealM2),
-    enabled: !!tipologiaSelecionada && totais.areaTotalRealM2 > 0,
+    queryKey: ['cores-com-preco', tipologiaSelecionada?.id, previewAreaM2],
+    queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id, previewAreaM2),
+    enabled: !!tipologiaSelecionada && previewAreaM2 > 0,
   });
 
   // Filtrar tipos de vidro baseado na tipologia selecionada
