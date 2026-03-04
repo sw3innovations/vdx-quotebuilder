@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { entities, calcularPecasBackend, recomendarVidroABNT } from "@/api/api";
+import { configuracaoApi, vidroApi } from "@/api/apiBackend";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -30,7 +31,7 @@ import TipologiaCard from "@/components/orcamento/TipologiaCard";
 import InputComUnidade from "@/components/orcamento/InputComUnidade";
 import PecaConferencia from "@/components/orcamento/PecaConferencia";
 import RecomendacaoABNT from "@/components/orcamento/RecomendacaoABNT";
-import { calcularPecas, calcularPreco } from "@/components/utils/calculoUtils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const ETAPAS = [
   { id: 1, nome: "Categoria", icone: Layers },
@@ -65,6 +66,9 @@ export default function OrcamentoPublico() {
   const [mostrarCarrinho, setMostrarCarrinho] = useState(false);
   const [acessoriosSelecionados, setAcessoriosSelecionados] = useState([]);
   const [recomendacaoABNT, setRecomendacaoABNT] = useState(null);
+  const [alertasVidro, setAlertasVidro] = useState([]);
+  const [validandoCor, setValidandoCor] = useState(false);
+  const [numeroOrcamento, setNumeroOrcamento] = useState(null);
 
   // Queries
   const { data: categorias = [] } = useQuery({
@@ -110,6 +114,12 @@ export default function OrcamentoPublico() {
     queryFn: () => entities.Acessorio.filter({ ativo: true }, 'ordem')
   });
 
+  const { data: coresComPreco = [] } = useQuery({
+    queryKey: ['cores-com-preco', tipologiaSelecionada?.id],
+    queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id),
+    enabled: !!tipologiaSelecionada,
+  });
+
   // Filtrar tipos de vidro baseado na tipologia selecionada
   const tiposVidroDisponiveis = useMemo(() => {
     const todosTipos = tiposVidroTecnicos.length > 0 ? tiposVidroTecnicos : tiposVidro;
@@ -142,6 +152,13 @@ export default function OrcamentoPublico() {
     };
   }, [puxadoresDisponiveis, ferragensTecnicas]);
 
+  const CATEGORIA_MAP = {
+    'Portas': 'PORTA', 'Janelas': 'JANELA', 'Box': 'BOX',
+    'Guarda Corpo': 'GUARDA_CORPO', 'Coberturas': 'COBERTURA',
+    'Divisórias': 'DIVISORIA', 'Vitrines': 'VITRINE', 'Fachadas': 'FACHADA',
+  };
+  const temBloqueio = alertasVidro.some(a => a.tipo === 'BLOQUEIO');
+
   // Company data
   const company = mockCompany;
   const primaryColor = company?.primary_color || localStorage.getItem('company_primary_color') || '#1e88e5';
@@ -164,10 +181,38 @@ export default function OrcamentoPublico() {
   // Mutation para salvar orçamento
   const salvarMutation = useMutation({
     mutationFn: (data) => entities.Orcamento.create(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setNumeroOrcamento(data?.numero || null);
       setOrcamentoSalvo(true);
     }
   });
+
+  const selecionarCor = async (cor) => {
+    setTipoVidroSelecionado(cor);
+    setAlertasVidro([]);
+    if (!categoriaSelecionada) return;
+    setValidandoCor(true);
+    try {
+      const toMm = (v, u) => {
+        const n = parseFloat(v) || 0;
+        if (u === 'mm') return n;
+        if (u === 'm') return n * 1000;
+        return n * 10; // cm default
+      };
+      const [v0, v1] = variaveisPreenchidas;
+      const resultado = await vidroApi.validar({
+        categoria: CATEGORIA_MAP[categoriaSelecionada.nome] || categoriaSelecionada.nome,
+        cor_codigo: cor.codigo,
+        largura_mm: Math.round(toMm(v0?.valor, v0?.unidade)),
+        altura_mm: Math.round(toMm(v1?.valor, v1?.unidade)),
+      });
+      setAlertasVidro(resultado.alertas || []);
+    } catch {
+      setAlertasVidro([]);
+    } finally {
+      setValidandoCor(false);
+    }
+  };
 
   const selecionarTipologia = async (tipologia) => {
     try {
@@ -238,47 +283,35 @@ export default function OrcamentoPublico() {
   const executarCalculo = async () => {
     if (!tipologiaSelecionada) return;
     
-    try {
-      const resultado = await calcularPecasBackend(
-        tipologiaSelecionada.id,
-        variaveisPreenchidas,
-        variaveisPreenchidas[0]?.unidade || 'cm'
+    const resultado = await calcularPecasBackend(
+      tipologiaSelecionada.id,
+      variaveisPreenchidas,
+      variaveisPreenchidas[0]?.unidade || 'cm'
+    );
+
+    setPecasCalculadas(resultado.pecas);
+    setTotais({
+      areaTotalRealM2: resultado.areaTotalRealM2,
+      areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
+    });
+    setPecaConferenciaAtual(0);
+
+    // Recomendacao ABNT automatica
+    if (categoriaSelecionada?.nome) {
+      const maiorPeca = resultado.pecas.reduce((max, p) => {
+        const area = (p.largura_real_mm || 0) * (p.altura_real_mm || 0);
+        const maxArea = (max.largura_real_mm || 0) * (max.altura_real_mm || 0);
+        return area > maxArea ? p : max;
+      }, resultado.pecas[0]);
+      const rec = await recomendarVidroABNT(
+        categoriaSelecionada.nome,
+        maiorPeca.largura_real_mm,
+        maiorPeca.altura_real_mm
       );
-      
-      setPecasCalculadas(resultado.pecas);
-      setTotais({
-        areaTotalRealM2: resultado.areaTotalRealM2,
-        areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
-      });
-      setPecaConferenciaAtual(0);
-
-      // Recomendacao ABNT automatica
-      if (categoriaSelecionada?.nome) {
-        const maiorPeca = resultado.pecas.reduce((max, p) => {
-          const area = (p.largura_real_mm || 0) * (p.altura_real_mm || 0);
-          const maxArea = (max.largura_real_mm || 0) * (max.altura_real_mm || 0);
-          return area > maxArea ? p : max;
-        }, resultado.pecas[0]);
-        const rec = await recomendarVidroABNT(
-          categoriaSelecionada.nome,
-          maiorPeca.largura_real_mm,
-          maiorPeca.altura_real_mm
-        );
-        setRecomendacaoABNT(rec);
-      }
-
-      setEtapaAtual(3);
-    } catch (error) {
-      console.error('Erro ao calcular peças:', error);
-      const resultado = calcularPecas(tipologiaSelecionada, variaveisPreenchidas);
-      setPecasCalculadas(resultado.pecas);
-      setTotais({
-        areaTotalRealM2: resultado.areaTotalRealM2,
-        areaTotalCobrancaM2: resultado.areaTotalCobrancaM2
-      });
-      setPecaConferenciaAtual(0);
-      setEtapaAtual(3);
+      setRecomendacaoABNT(rec);
     }
+
+    setEtapaAtual(3);
   };
 
   const confirmarPeca = (index) => {
@@ -306,14 +339,14 @@ export default function OrcamentoPublico() {
       return;
     }
 
-    const precoVidro = calcularPreco(totais.areaTotalCobrancaM2, tipoVidroSelecionado.preco_m2);
+    const precoVidro = tipoVidroSelecionado?.preco_final || 0;
     const itemCarrinho = {
       id: Date.now(),
       tipologia_id: tipologiaSelecionada.id,
       tipologia_nome: tipologiaSelecionada.nome,
       tipo_vidro_id: tipoVidroSelecionado.id,
       tipo_vidro_nome: tipoVidroSelecionado.nome,
-      tipo_vidro_cor: tipoVidroSelecionado.cor,
+      tipo_vidro_cor: tipoVidroSelecionado.cor_hex || tipoVidroSelecionado.cor,
       variaveis_entrada: variaveisPreenchidas.map(v => ({
         nome: v.nome,
         label: v.label,
@@ -324,12 +357,11 @@ export default function OrcamentoPublico() {
       acessorios_selecionados: acessoriosSelecionados.map(a => ({ ...a })),
       area_total_real_m2: totais.areaTotalRealM2,
       area_total_cobranca_m2: totais.areaTotalCobrancaM2,
-      preco_m2: tipoVidroSelecionado.preco_m2,
       preco_vidro: precoVidro,
       preco_acessorios: precoAcessorios,
       preco_total_item: precoVidro + precoAcessorios
     };
-    
+
     setCarrinho([...carrinho, itemCarrinho]);
     
     // Resetar para adicionar novo item
@@ -373,14 +405,14 @@ export default function OrcamentoPublico() {
     }
 
     // Adicionar item atual ao carrinho antes de ir para finalização
-    const precoVidro = calcularPreco(totais.areaTotalCobrancaM2, tipoVidroSelecionado.preco_m2);
+    const precoVidro = tipoVidroSelecionado?.preco_final || 0;
     const itemCarrinho = {
       id: Date.now(),
       tipologia_id: tipologiaSelecionada.id,
       tipologia_nome: tipologiaSelecionada.nome,
       tipo_vidro_id: tipoVidroSelecionado.id,
       tipo_vidro_nome: tipoVidroSelecionado.nome,
-      tipo_vidro_cor: tipoVidroSelecionado.cor,
+      tipo_vidro_cor: tipoVidroSelecionado.cor_hex || tipoVidroSelecionado.cor,
       variaveis_entrada: variaveisPreenchidas.map(v => ({
         nome: v.nome,
         label: v.label,
@@ -391,12 +423,11 @@ export default function OrcamentoPublico() {
       acessorios_selecionados: acessoriosSelecionados.map(a => ({ ...a })),
       area_total_real_m2: totais.areaTotalRealM2,
       area_total_cobranca_m2: totais.areaTotalCobrancaM2,
-      preco_m2: tipoVidroSelecionado.preco_m2,
       preco_vidro: precoVidro,
       preco_acessorios: precoAcessorios,
       preco_total_item: precoVidro + precoAcessorios
     };
-    
+
     setCarrinho([...carrinho, itemCarrinho]);
     setMostrarCarrinho(false);
     setEtapaAtual(5);
@@ -443,30 +474,27 @@ export default function OrcamentoPublico() {
 
   const precoFinal = useMemo(() => {
     if (!tipoVidroSelecionado) return 0;
-    const precoVidro = calcularPreco(totais.areaTotalCobrancaM2, tipoVidroSelecionado.preco_m2);
-    return precoVidro + precoAcessorios;
-  }, [totais.areaTotalCobrancaM2, tipoVidroSelecionado, precoAcessorios]);
+    return (tipoVidroSelecionado.preco_final || 0) + precoAcessorios;
+  }, [tipoVidroSelecionado, precoAcessorios]);
 
   const salvarOrcamento = () => {
     const precoTotal = carrinho.reduce((sum, item) => sum + item.preco_total_item, 0);
-    
+
     const dadosOrcamento = {
-      numero: `ORC-${Date.now().toString().slice(-8)}`,
       cliente_nome: clienteInfo.nome,
       cliente_telefone: clienteInfo.telefone,
       cliente_email: clienteInfo.email,
       itens: carrinho,
       preco_total: precoTotal,
-      status: 'aguardando_aprovacao'
     };
-    
+
     salvarMutation.mutate(dadosOrcamento);
   };
 
   const podeAvancar = () => {
     switch (etapaAtual) {
       case 1: return !!categoriaSelecionada;
-      case 2: return tipologiaSelecionada && variaveisPreenchidas.every(v => v.valor !== '' && v.valor !== null) && !!tipoVidroSelecionado;
+      case 2: return tipologiaSelecionada && variaveisPreenchidas.every(v => v.valor !== '' && v.valor !== null) && !!tipoVidroSelecionado && !temBloqueio;
       case 3: return pecasCalculadas.every(p => p.conferido);
       case 4: return true; // Acessórios são opcionais
       case 5: return carrinho.length > 0 && clienteInfo.nome && clienteInfo.telefone;
@@ -541,6 +569,9 @@ export default function OrcamentoPublico() {
                   <CheckCircle2 className="w-10 h-10 text-green-600" />
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Orçamento Enviado!</h2>
+                {numeroOrcamento && (
+                  <p className="text-2xl font-mono font-bold text-blue-600 mb-2">{numeroOrcamento}</p>
+                )}
                 <p className="text-slate-600 mb-6">
                   Recebemos seu orçamento com sucesso. Entraremos em contato em breve através do telefone informado.
                 </p>
@@ -817,54 +848,61 @@ export default function OrcamentoPublico() {
                         <CardHeader>
                           <CardTitle className="text-lg">Tipo de Vidro</CardTitle>
                           <p className="text-sm text-slate-500 mt-1">
-                            Selecione a cor e veja o preço final estimado
+                            Selecione a cor e veja o preço final
                           </p>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {tiposVidroDisponiveis.map((tipo) => {
-                            const resultadoTemp = calcularPecas(tipologiaSelecionada, variaveisPreenchidas);
-                            const precoEstimado = calcularPreco(resultadoTemp.areaTotalCobrancaM2, tipo.preco_m2 || 0);
-                            
-                            return (
-                              <div
-                                key={tipo.id}
-                                onClick={() => setTipoVidroSelecionado(tipo)}
-                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                  tipoVidroSelecionado?.id === tipo.id
-                                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div 
-                                      className="w-12 h-12 sm:w-10 sm:h-10 rounded-lg border-2 border-white shadow-sm flex-shrink-0"
-                                      style={{ backgroundColor: tipo.cor || '#e2e8f0' }}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <p className="font-medium text-slate-900 text-sm sm:text-base truncate">{tipo.nome}</p>
-                                      <p className="text-xs text-slate-500 mt-0.5">{tipo.codigo}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:flex-col sm:items-end sm:gap-1 flex-shrink-0">
-                                    <div className="text-left sm:text-right">
-                                      <p className="text-base sm:text-lg font-bold text-slate-900">
-                                        R$ {precoEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                      </p>
-                                      <p className="text-xs text-slate-500 mt-0.5">
-                                        {resultadoTemp.areaTotalCobrancaM2.toFixed(2)} m²
-                                      </p>
-                                    </div>
-                                    {tipoVidroSelecionado?.id === tipo.id && (
-                                      <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 sm:hidden">
-                                        <Check className="w-3 h-3 text-white" />
-                                      </div>
-                                    )}
+                          {coresComPreco.map((tipo) => (
+                            <div
+                              key={tipo.id}
+                              onClick={() => !validandoCor && selecionarCor(tipo)}
+                              className={`p-4 rounded-xl border-2 transition-all ${
+                                validandoCor ? 'cursor-wait opacity-60' : 'cursor-pointer'
+                              } ${
+                                tipoVidroSelecionado?.id === tipo.id
+                                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                                  : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div
+                                    className="w-12 h-12 sm:w-10 sm:h-10 rounded-lg border-2 border-white shadow-sm flex-shrink-0"
+                                    style={{ backgroundColor: tipo.cor_hex || tipo.cor || '#e2e8f0' }}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-slate-900 text-sm sm:text-base truncate">{tipo.nome}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5">{tipo.codigo}</p>
                                   </div>
                                 </div>
+                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:flex-col sm:items-end sm:gap-1 flex-shrink-0">
+                                  <p className="text-base sm:text-lg font-bold text-slate-900">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tipo.preco_final || 0)}
+                                  </p>
+                                  {tipoVidroSelecionado?.id === tipo.id && (
+                                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 sm:hidden">
+                                      <Check className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            );
-                          })}
+                            </div>
+                          ))}
+
+                          {alertasVidro.length > 0 && (
+                            <div className="space-y-2 mt-2">
+                              {alertasVidro.map((alerta, i) => (
+                                <Alert key={i} variant={alerta.tipo === 'BLOQUEIO' ? 'destructive' : 'default'}>
+                                  <AlertDescription>
+                                    <p className="font-medium">{alerta.mensagem}</p>
+                                    {alerta.normaReferencia && (
+                                      <p className="text-xs mt-1 opacity-75">{alerta.normaReferencia}</p>
+                                    )}
+                                  </AlertDescription>
+                                </Alert>
+                              ))}
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     )}
@@ -970,7 +1008,7 @@ export default function OrcamentoPublico() {
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-blue-100 text-xs sm:text-sm">Vidro</span>
                             <span className="font-semibold text-sm sm:text-base">
-                              R$ {calcularPreco(totais.areaTotalCobrancaM2, tipoVidroSelecionado?.preco_m2).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(tipoVidroSelecionado?.preco_final || 0)}
                             </span>
                           </div>
                           

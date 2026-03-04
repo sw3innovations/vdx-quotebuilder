@@ -59,8 +59,9 @@ export const configuracaoApi = {
   listarVariaveis: (tipologiaId) => request(`/api/configuracao/tipologias/${tipologiaId}/variaveis`),
 
   // Cores de vidro
-  listarCores: () => request('/api/configuracao/cores'),
-  buscarCor:   (codigo) => request(`/api/configuracao/cores/${codigo}`),
+  listarCores:    () => request('/api/configuracao/cores'),
+  buscarCor:      (codigo) => request(`/api/configuracao/cores/${codigo}`),
+  coresComPreco:  (tipologiaId) => request(`/api/configuracao/tipologias/${tipologiaId}/cores-com-preco`),
 };
 
 // ==================== CÁLCULO ====================
