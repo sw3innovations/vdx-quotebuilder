@@ -209,18 +209,11 @@ export default function OrcamentoPublico() {
     if (!categoriaSelecionada) return;
     setValidandoCor(true);
     try {
-      const toMm = (v, u) => {
-        const n = parseFloat(v) || 0;
-        if (u === 'mm') return n;
-        if (u === 'm') return n * 1000;
-        return n * 10; // cm default
-      };
-      const [v0, v1] = variaveisPreenchidas;
       const resultado = await vidroApi.validar({
         categoria: CATEGORIA_MAP[categoriaSelecionada.nome] || categoriaSelecionada.nome,
-        cor_codigo: cor.codigo,
-        largura_mm: Math.round(toMm(v0?.valor, v0?.unidade)),
-        altura_mm: Math.round(toMm(v1?.valor, v1?.unidade)),
+        tipoVidro: 'TEMPERADO',
+        espessuraMm: previewAreaM2 >= 2.5 ? 10 : 8,
+        areaM2: previewAreaM2,
       });
       setAlertasVidro(resultado.alertas || []);
     } catch {
