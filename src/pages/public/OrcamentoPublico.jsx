@@ -134,6 +134,7 @@ export default function OrcamentoPublico() {
     queryKey: ['cores-com-preco', tipologiaSelecionada?.id, previewAreaM2],
     queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id, previewAreaM2),
     enabled: !!tipologiaSelecionada && previewAreaM2 > 0,
+    staleTime: Infinity,
   });
 
   // Filtrar tipos de vidro baseado na tipologia selecionada
@@ -204,6 +205,7 @@ export default function OrcamentoPublico() {
   });
 
   const selecionarCor = async (cor) => {
+    console.log('[VDX] selecionarCor chamado:', cor);
     setTipoVidroSelecionado(cor);  // seleção visual imediata
     setAlertasVidro([]);
     if (!categoriaSelecionada || !previewAreaM2 || previewAreaM2 <= 0) return;
@@ -216,7 +218,8 @@ export default function OrcamentoPublico() {
         areaM2: previewAreaM2,
       });
       setAlertasVidro(resultado.alertas || []);
-    } catch {
+    } catch (err) {
+      console.error('[VDX] vidroApi.validar erro:', err);
       setAlertasVidro([]);
     } finally {
       setValidandoCor(false);
