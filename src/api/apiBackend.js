@@ -61,7 +61,7 @@ export const configuracaoApi = {
   // Cores de vidro
   listarCores:    () => request('/api/configuracao/cores'),
   buscarCor:      (codigo) => request(`/api/configuracao/cores/${codigo}`),
-  coresComPreco:  (tipologiaId) => request(`/api/configuracao/tipologias/${tipologiaId}/cores-com-preco`),
+  coresComPreco:  (tipologiaId, areaTotalM2) => request(`/api/configuracao/tipologias/${tipologiaId}/cores-com-preco?areaTotalM2=${areaTotalM2}`),
 };
 
 // ==================== CÁLCULO ====================

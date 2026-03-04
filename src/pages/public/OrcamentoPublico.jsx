@@ -115,9 +115,9 @@ export default function OrcamentoPublico() {
   });
 
   const { data: coresComPreco = [] } = useQuery({
-    queryKey: ['cores-com-preco', tipologiaSelecionada?.id],
-    queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id),
-    enabled: !!tipologiaSelecionada,
+    queryKey: ['cores-com-preco', tipologiaSelecionada?.id, totais.areaTotalRealM2],
+    queryFn: () => configuracaoApi.coresComPreco(tipologiaSelecionada.id, totais.areaTotalRealM2),
+    enabled: !!tipologiaSelecionada && totais.areaTotalRealM2 > 0,
   });
 
   // Filtrar tipos de vidro baseado na tipologia selecionada
