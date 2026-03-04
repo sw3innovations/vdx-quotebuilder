@@ -44,16 +44,16 @@ export const configuracaoApi = {
   // Categorias
   listarCategorias:   ()        => request('/api/configuracao/categorias'),
   buscarCategoria:    (id)      => request(`/api/configuracao/categorias/${id}`),
-  criarCategoria:     (data)    => request('/api/configuracao/categorias', { method: 'POST', body: JSON.stringify(data) }),
-  atualizarCategoria: (id, data) => request(`/api/configuracao/categorias/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deletarCategoria:   (id)      => request(`/api/configuracao/categorias/${id}`, { method: 'DELETE' }),
+  criarCategoria:     (data)    => request('/api/configuracao/categoria/cadastrar', { method: 'POST', body: JSON.stringify(data) }),
+  atualizarCategoria: (id, data) => request(`/api/configuracao/categoria/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletarCategoria:   (id)      => request(`/api/configuracao/categoria/${id}`, { method: 'DELETE' }),
 
   // Tipologias
   listarTipologias:   (categoriaId) => request(`/api/configuracao/categorias/${categoriaId}/tipologias`),
   buscarTipologia:    (id)          => request(`/api/configuracao/tipologias/${id}`),
-  criarTipologia:     (data)        => request('/api/configuracao/tipologias', { method: 'POST', body: JSON.stringify(data) }),
-  atualizarTipologia: (id, data)    => request(`/api/configuracao/tipologias/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deletarTipologia:   (id)          => request(`/api/configuracao/tipologias/${id}`, { method: 'DELETE' }),
+  criarTipologia:     (data)        => request('/api/configuracao/tipologia/cadastrar', { method: 'POST', body: JSON.stringify(data) }),
+  atualizarTipologia: (id, data)    => request(`/api/configuracao/tipologia/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletarTipologia:   (id)          => request(`/api/configuracao/tipologia/${id}`, { method: 'DELETE' }),
 
   // Variáveis de uma tipologia
   listarVariaveis: (tipologiaId) => request(`/api/configuracao/tipologias/${tipologiaId}/variaveis`),

@@ -206,6 +206,7 @@ export default function OrcamentoPublico() {
   const selecionarCor = async (cor) => {
     setTipoVidroSelecionado(cor);
     setAlertasVidro([]);
+    console.log('selecionarCor chamado:', cor, 'categoria:', categoriaSelecionada?.nome, 'map:', CATEGORIA_MAP[categoriaSelecionada?.nome]);
     if (!categoriaSelecionada) return;
     setValidandoCor(true);
     try {
