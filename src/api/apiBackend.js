@@ -1,55 +1,66 @@
-// Cliente HTTP para o backend VDX
-// Conecta ao Spring Boot rodando em localhost:9090
-
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:9090';
+
+function getAuthHeaders(endpoint) {
+  if (endpoint.startsWith('/api/vidraceiro/')) {
+    const t = localStorage.getItem('vidraceiro_token');
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }
+  if (endpoint.startsWith('/api/admin/') || endpoint.startsWith('/api/orcamentos')) {
+    const t = localStorage.getItem('admin_token');
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  }
+  return {};
+}
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
-  
+
   const config = {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(endpoint),
       ...options.headers,
     },
-    ...options,
   };
 
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error(`[API] ${options.method || 'GET'} ${endpoint} ->`, error.message);
+  const response = await fetch(url, config);
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const error = new Error(err.message || `HTTP ${response.status}`);
+    error.status = response.status;
     throw error;
   }
+
+  if (response.status === 204) return null;
+
+  return response.json();
 }
 
 // ==================== CONFIGURAÇÃO ====================
 
 export const configuracaoApi = {
-  // Categorias (com tipologias embutidas)
-  listarCategorias: () => request('/api/configuracao/categorias'),
-  
-  buscarCategoria: (id) => request(`/api/configuracao/categorias/${id}`),
-  
-  // Tipologias por categoria
-  listarTipologias: (categoriaId) => request(`/api/configuracao/categorias/${categoriaId}/tipologias`),
-  
-  // Tipologia completa (com variáveis, fórmulas, peças)
-  buscarTipologia: (id) => request(`/api/configuracao/tipologias/${id}`),
-  
+  // Categorias
+  listarCategorias:   ()        => request('/api/configuracao/categorias'),
+  buscarCategoria:    (id)      => request(`/api/configuracao/categorias/${id}`),
+  criarCategoria:     (data)    => request('/api/configuracao/categorias', { method: 'POST', body: JSON.stringify(data) }),
+  atualizarCategoria: (id, data) => request(`/api/configuracao/categorias/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletarCategoria:   (id)      => request(`/api/configuracao/categorias/${id}`, { method: 'DELETE' }),
+
+  // Tipologias
+  listarTipologias:   (categoriaId) => request(`/api/configuracao/categorias/${categoriaId}/tipologias`),
+  buscarTipologia:    (id)          => request(`/api/configuracao/tipologias/${id}`),
+  criarTipologia:     (data)        => request('/api/configuracao/tipologias', { method: 'POST', body: JSON.stringify(data) }),
+  atualizarTipologia: (id, data)    => request(`/api/configuracao/tipologias/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletarTipologia:   (id)          => request(`/api/configuracao/tipologias/${id}`, { method: 'DELETE' }),
+
   // Variáveis de uma tipologia
   listarVariaveis: (tipologiaId) => request(`/api/configuracao/tipologias/${tipologiaId}/variaveis`),
-  
+
   // Cores de vidro
   listarCores: () => request('/api/configuracao/cores'),
-  
-  buscarCor: (codigo) => request(`/api/configuracao/cores/${codigo}`),
+  buscarCor:   (codigo) => request(`/api/configuracao/cores/${codigo}`),
 };
 
 // ==================== CÁLCULO ====================
@@ -101,9 +112,26 @@ export const vidroApi = {
   categoriasAplicacao: () => request('/api/vidro/categorias-aplicacao'),
 };
 
+// ==================== ADMIN ====================
+
+export const adminApi = {
+  listarOrcamentos: () => request('/api/orcamentos'),
+  buscarOrcamento:  (id) => request(`/api/orcamentos/${id}`),
+};
+
+// ==================== VIDRACEIRO ====================
+
+export const vidaceiroApi = {
+  criarOrcamento:   (data) => request('/api/vidraceiro/orcamentos', { method: 'POST', body: JSON.stringify(data) }),
+  listarOrcamentos: ()     => request('/api/vidraceiro/me/orcamentos'),
+  buscarOrcamento:  (id)   => request(`/api/vidraceiro/me/orcamentos/${id}`),
+};
+
 export default {
   configuracao: configuracaoApi,
   calculo: calculoApi,
   orcamento: orcamentoApi,
   vidro: vidroApi,
+  admin: adminApi,
+  vidraceiro: vidaceiroApi,
 };

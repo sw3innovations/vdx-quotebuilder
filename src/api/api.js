@@ -1,9 +1,5 @@
 // API client - conecta ao backend VDX (Spring Boot)
-// Substitui os dados mockados por chamadas reais à API
-import { configuracaoApi, orcamentoApi, calculoApi, vidroApi } from './apiBackend';
-
-// Storage local para orçamentos (temporário até ter endpoint no backend)
-let orcamentosLocal = [];
+import { configuracaoApi, orcamentoApi, calculoApi, vidroApi, adminApi, vidaceiroApi } from './apiBackend';
 
 // ==================== HELPERS ====================
 
@@ -153,18 +149,36 @@ export const entities = {
     list: async (orderBy = 'ordem') => {
       const cached = cache.get('categorias');
       if (cached) return cached;
-      
+
       const data = await configuracaoApi.listarCategorias();
       const transformed = data.map(transformCategoria);
       cache.set('categorias', transformed);
       return transformed;
     },
-    
+
     filter: async (filters = {}, orderBy = 'ordem') => {
       const todas = await entities.Categoria.list(orderBy);
-      return todas.filter(cat => {
-        return Object.entries(filters).every(([key, value]) => cat[key] === value);
-      });
+      return todas.filter(cat =>
+        Object.entries(filters).every(([key, value]) => cat[key] === value)
+      );
+    },
+
+    create: async (data) => {
+      const result = await configuracaoApi.criarCategoria(data);
+      cache.clear();
+      return result;
+    },
+
+    update: async (id, data) => {
+      const result = await configuracaoApi.atualizarCategoria(id, data);
+      cache.clear();
+      return result;
+    },
+
+    delete: async (id) => {
+      await configuracaoApi.deletarCategoria(id);
+      cache.clear();
+      return { id };
     },
   },
 
@@ -248,43 +262,20 @@ export const entities = {
     filter: async () => [],
   },
 
-  // ==================== ORÇAMENTO (local temporário) ====================
+  // ==================== ORÇAMENTO ====================
   Orcamento: {
-    list: async (orderBy = '-created_date', limit = 100) => {
-      return orcamentosLocal.slice(0, limit);
+    // Admin: lista todos os orçamentos
+    list: async () => adminApi.listarOrcamentos(),
+
+    filter: async (filters = {}) => {
+      const todos = await entities.Orcamento.list();
+      return todos.filter(orc =>
+        Object.entries(filters).every(([key, value]) => orc[key] === value)
+      );
     },
-    
-    filter: async (filters = {}, orderBy = 'ordem') => {
-      return orcamentosLocal.filter(orc => {
-        return Object.entries(filters).every(([key, value]) => orc[key] === value);
-      });
-    },
-    
-    create: async (data) => {
-      const now = new Date().toISOString();
-      const newItem = {
-        ...data,
-        id: `orc-${Date.now()}`,
-        numero: `ORC-${Date.now().toString().slice(-8)}`,
-        created_date: now,
-        updated_date: now,
-        history: [{ date: now, action: 'Orçamento criado', user: data.cliente_nome || 'Cliente' }],
-      };
-      orcamentosLocal.push(newItem);
-      return newItem;
-    },
-    
-    update: async (id, data) => {
-      const index = orcamentosLocal.findIndex(item => item.id === id);
-      if (index === -1) throw new Error('Orçamento não encontrado');
-      orcamentosLocal[index] = { ...orcamentosLocal[index], ...data, updated_date: new Date().toISOString() };
-      return orcamentosLocal[index];
-    },
-    
-    delete: async (id) => {
-      orcamentosLocal = orcamentosLocal.filter(item => item.id !== id);
-      return { id };
-    },
+
+    // Vidraceiro: cria orçamento (usado em F9 — OrcamentoPublico etapa 5)
+    create: async (data) => vidaceiroApi.criarOrcamento(data),
   },
 
   // ==================== STUBS para compatibilidade ====================
