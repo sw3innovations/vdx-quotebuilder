@@ -339,8 +339,7 @@ export default function OrcamentoPublico() {
       if (acessoriosDisponiveisTipologia.length > 0) {
         setEtapaAtual(4);
       } else {
-        // Pula direto para finalização se não houver acessórios
-        setEtapaAtual(5);
+        irParaFinalizacao();
       }
     }
   };
@@ -497,6 +496,15 @@ export default function OrcamentoPublico() {
       cliente_nome: clienteInfo.nome,
       cliente_telefone: clienteInfo.telefone,
       cliente_email: clienteInfo.email,
+      tipologia_id: tipoVidroSelecionado ? carrinho[0]?.tipologia_id : tipologiaSelecionada?.id,
+      tipologia_nome: tipoVidroSelecionado ? carrinho[0]?.tipologia_nome : tipologiaSelecionada?.nome,
+      tipo_vidro_id: tipoVidroSelecionado?.cor_id,
+      tipo_vidro_nome: tipoVidroSelecionado?.nome,
+      variaveis_entrada: variaveisPreenchidas,
+      pecas_calculadas: pecasCalculadas,
+      area_total_real_m2: totais.areaTotalRealM2,
+      area_total_cobranca_m2: totais.areaTotalCobrancaM2,
+      preco_m2: tipoVidroSelecionado?.preco_m2,
       itens: carrinho,
       preco_total: precoTotal,
     };
