@@ -104,9 +104,10 @@ export const vidroApi = {
   }),
   
   // Validar seleção de vidro
-  validar: (dados) => request('/api/vidro/validar', {
+  validar: (dados, signal) => request('/api/vidro/validar', {
     method: 'POST',
     body: JSON.stringify(dados),
+    ...(signal ? { signal } : {}),
   }),
   
   // Listar categorias de aplicação

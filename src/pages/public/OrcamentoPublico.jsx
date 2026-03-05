@@ -205,21 +205,22 @@ export default function OrcamentoPublico() {
   });
 
   const selecionarCor = async (cor) => {
-    console.log('[VDX] selecionarCor chamado:', cor);
     setTipoVidroSelecionado(cor);  // seleção visual imediata
     setAlertasVidro([]);
     if (!categoriaSelecionada || !previewAreaM2 || previewAreaM2 <= 0) return;
     setValidandoCor(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
     try {
       const resultado = await vidroApi.validar({
         categoria: CATEGORIA_MAP[categoriaSelecionada.nome] || categoriaSelecionada.nome,
         tipoVidro: 'TEMPERADO',
         espessuraMm: previewAreaM2 >= 2.5 ? 10 : 8,
         areaM2: previewAreaM2,
-      });
+      }, controller.signal);
+      clearTimeout(timeout);
       setAlertasVidro(resultado.alertas || []);
-    } catch (err) {
-      console.error('[VDX] vidroApi.validar erro:', err);
+    } catch {
       setAlertasVidro([]);
     } finally {
       setValidandoCor(false);
@@ -867,7 +868,7 @@ export default function OrcamentoPublico() {
                           {coresComPreco.map((tipo) => (
                             <div
                               key={tipo.cor_id}
-                              onClick={() => !validandoCor && selecionarCor(tipo)}
+                              onClick={() => selecionarCor(tipo)}
                               className={`p-4 rounded-xl border-2 transition-all ${
                                 tipoVidroSelecionado?.cor_id === tipo.cor_id
                                   ? 'border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-400 ring-offset-1 cursor-pointer'
