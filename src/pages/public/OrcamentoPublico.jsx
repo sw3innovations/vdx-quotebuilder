@@ -504,7 +504,7 @@ export default function OrcamentoPublico() {
       pecas_calculadas: pecasCalculadas,
       area_total_real_m2: totais.areaTotalRealM2,
       area_total_cobranca_m2: totais.areaTotalCobrancaM2,
-      preco_m2: tipoVidroSelecionado?.preco_m2,
+      preco_m2: tipoVidroSelecionado?.preco_m2 || 0,
       itens: carrinho,
       preco_total: precoTotal,
     };
