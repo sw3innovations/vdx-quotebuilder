@@ -225,11 +225,15 @@ export const entities = {
     list: async (orderBy = 'ordem') => {
       const cached = cache.get('cores');
       if (cached) return cached;
-      
-      const data = await configuracaoApi.listarCores();
-      const transformed = data.map(transformCorParaTipoVidro);
-      cache.set('cores', transformed);
-      return transformed;
+
+      try {
+        const data = await configuracaoApi.listarCores();
+        const transformed = data.map(transformCorParaTipoVidro);
+        cache.set('cores', transformed);
+        return transformed;
+      } catch {
+        return [];
+      }
     },
     
     filter: async (filters = {}, orderBy = 'ordem') => {
