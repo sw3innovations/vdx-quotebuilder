@@ -205,12 +205,13 @@ export default function OrcamentoPublico() {
   });
 
   const selecionarCor = async (cor) => {
+    console.log('cor selecionada:', cor);
     setTipoVidroSelecionado(cor);  // seleção visual imediata
     setAlertasVidro([]);
     if (!categoriaSelecionada || !previewAreaM2 || previewAreaM2 <= 0) return;
     setValidandoCor(true);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 3000);
     try {
       const resultado = await vidroApi.validar({
         categoria: CATEGORIA_MAP[categoriaSelecionada.nome] || categoriaSelecionada.nome,
@@ -221,7 +222,7 @@ export default function OrcamentoPublico() {
       clearTimeout(timeout);
       setAlertasVidro(resultado.alertas || []);
     } catch {
-      setAlertasVidro([]);
+      setAlertasVidro([]);  // limpa bloqueios anteriores mesmo em caso de erro
     } finally {
       setValidandoCor(false);
     }
